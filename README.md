@@ -1,27 +1,59 @@
-# CicdSample
+# CICD
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.2.2.
+## Steps to deploy a new site
 
-## Development server
+1. Create repository in GitHub by visiting repo.new
+2. Create code inside repository
+3. Generate Netlify site and connect to your GitHub repo
+4. Create a new Build Hook:
+   ![Alt](/img/buildhooks.png "Title")
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+5. Add the Build Hook as a secret to GitHub:
+   ![Alt](/img/addhooktogithub.png "Title")
 
-## Code scaffolding
+6. On the repository page in Github go to Actions, click New Workflow then click set up a workflow yourself.
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+7. Add a workflow similar to this. Note this executes on push to main. Ensure you have named your NETLIFY_BUILD_HOOK the same as the one in the script.
 
-## Build
+```yml
+name: Trigger Netlify Build
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    name: Request Netlify Webhook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl request
+        run: curl -X POST -d {} ${{secrets.NETLIFY_BUILD_HOOK}}
+```
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+8.  Now you can run push a change and you should see your code deployed to Netlify.
 
-## Running unit tests
+## Consider:
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+- Try another script. You will need to add some other secrets and get the info from your site in Netlify. Also when you run the ng build (if an Angular app) then you'll need to make sure where the site is being built locally and adjust the build_directory accordingly as that would match the target directory on the server:
 
-## Running end-to-end tests
+```yml
+name: "Deploy"
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+on:
+  pull_request:
+    types: closed
 
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    name: "Deploy to Netlify"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: jsmrcaga/action-netlify-deploy@v2.1.0
+        with:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.MY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.MY_SITE_ID }}
+          NETLIFY_DEPLOY_TO_PROD: true
+          build_directory: dist/hello-ci-cd/browser
+```
